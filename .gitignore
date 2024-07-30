@@ -72,3 +72,43 @@ Plugins/*/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+
+# Ignore all user-specific files
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/codeStyles
+
+# Ignore sensitive or user-specific files
+.idea/**/gradle.xml
+.idea/**/libraries
+.idea/**/jsLibraryMappings.xml
+
+# Ignore project-specific files
+.idea/modules.xml
+.idea/*.iml
+.idea/modules
+.idea/vcs.xml
+.idea/**/misc.xml
+
+# Ignore build outputs
+out/
+build/
+
+# Ignore Rider logs
+.idea/**/description_cache/
+.idea/**/autoimport/
+.idea/sync/.*\#\
+.idea/libraries/
+.idea/**/targets/
+.idea/**/bsp/
+.idea/**/dependencies/
+.idea/**/rendering/
+.idea/**/project/
+
+# Exclude some specific files from being ignored
+!.idea/misc.xml
+
