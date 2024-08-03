@@ -5,6 +5,7 @@
 #include "Logging/LogMacros.h"
 #include "APlayerCharacter.generated.h"
 
+class AACar;
 class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
@@ -17,7 +18,8 @@ UCLASS(config=Game)
 class APlayerCharacter : public ACharacter
 {
 	GENERATED_BODY()
-	
+
+public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;
 	
@@ -39,21 +41,26 @@ class APlayerCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* EnterAction;
 
-public:
+	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	
 	APlayerCharacter();
-	void setMeshVisibility(bool isVisible) const;
+	void ExitVehicle();
 
 protected:
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
-	void Enter(const FInputActionValue& Value);
-
+	void Interact();
 	
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	void EnterVehicle(AACar* Vehicle);
+
+
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void BeginPlay() override;
 
-public:
-	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+private:
+	bool _isInVehicle;
+	AACar* _currentVehicle;
 };
 
