@@ -72,7 +72,9 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::Look);
 
-		EnhancedInputComponent->BindAction(EnterAction, ETriggerEvent::Triggered, this, &ThisClass::Interact);
+		EnhancedInputComponent->BindAction(EnterAction, ETriggerEvent::Started, this, &ThisClass::Interact);
+
+		EnhancedInputComponent->BindAction(GetWeaponAction, ETriggerEvent::Started, this, &ThisClass::ToggleWeapon);
 	}
 	else
 	{
@@ -110,6 +112,11 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
 	}
+}
+
+void APlayerCharacter::ToggleWeapon(const FInputActionValue& Value)
+{
+	RifleEquipped = !RifleEquipped;
 }
 
 void APlayerCharacter::Interact()
