@@ -43,6 +43,9 @@ APlayerCharacter::APlayerCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
+	WeaponSMComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponSMComponent"));
+	WeaponSMComponent->SetupAttachment(GetMesh(), FName("WeaponSocket"));
+
 	_isInVehicle = false;
 	_currentVehicle = nullptr;
 }
