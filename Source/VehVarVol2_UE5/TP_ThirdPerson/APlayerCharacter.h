@@ -46,6 +46,9 @@ public:
 	UInputAction* EnterAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* AimAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* GetWeaponAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Settings)
@@ -58,17 +61,19 @@ public:
 	void ExitVehicle();
 
 protected:
+	virtual void BeginPlay() override;
+
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 	void ToggleWeapon(const FInputActionValue& Value);
+	void Aim(const FInputActionValue& Value);
+	void StopAim(const FInputActionValue& Value);
 	void Interact();
 	
 	void EnterVehicle(AACar* Vehicle);
 
 
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-	virtual void BeginPlay() override;
-
 
 private:
 	bool _isInVehicle;

@@ -45,6 +45,7 @@ APlayerCharacter::APlayerCharacter()
 
 	WeaponSMComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponSMComponent"));
 	WeaponSMComponent->SetupAttachment(GetMesh(), FName("WeaponSocket"));
+	WeaponSMComponent->SetHiddenInGame(true);
 
 	_isInVehicle = false;
 	_currentVehicle = nullptr;
@@ -70,14 +71,12 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	{
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::Move);
-
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::Look);
-
 		EnhancedInputComponent->BindAction(EnterAction, ETriggerEvent::Started, this, &ThisClass::Interact);
-
 		EnhancedInputComponent->BindAction(GetWeaponAction, ETriggerEvent::Started, this, &ThisClass::ToggleWeapon);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &ThisClass::Aim);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &ThisClass::StopAim);
 	}
 	else
 	{
@@ -92,7 +91,7 @@ void APlayerCharacter::Move(const FInputActionValue& Value)
 {
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-	if (Controller != nullptr)
+	if (Controller)
 	{
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
@@ -120,6 +119,15 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 void APlayerCharacter::ToggleWeapon(const FInputActionValue& Value)
 {
 	RifleEquipped = !RifleEquipped;
+	WeaponSMComponent->SetHiddenInGame(!RifleEquipped);
+}
+
+void APlayerCharacter::Aim(const FInputActionValue& Value)
+{
+}
+
+void APlayerCharacter::StopAim(const FInputActionValue& Value)
+{
 }
 
 void APlayerCharacter::Interact()
