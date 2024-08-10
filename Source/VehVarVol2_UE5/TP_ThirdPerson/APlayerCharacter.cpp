@@ -46,14 +46,8 @@ APlayerCharacter::APlayerCharacter()
 	WeaponSMComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponSMComponent"));
 	WeaponSMComponent->SetupAttachment(GetMesh(), FName("WeaponSocket"));
 	WeaponSMComponent->SetHiddenInGame(true);
-
-	_isInVehicle = false;
+	
 	_currentVehicle = nullptr;
-}
-
-void APlayerCharacter::BeginPlay()
-{
-	Super::BeginPlay();
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -71,12 +65,12 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	{
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::Move);
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::Look);
-		EnhancedInputComponent->BindAction(EnterAction, ETriggerEvent::Started, this, &ThisClass::Interact);
-		EnhancedInputComponent->BindAction(GetWeaponAction, ETriggerEvent::Started, this, &ThisClass::ToggleWeapon);
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &ThisClass::Aim);
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &ThisClass::StopAim);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::move);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::look);
+		EnhancedInputComponent->BindAction(EnterAction, ETriggerEvent::Started, this, &ThisClass::interact);
+		EnhancedInputComponent->BindAction(GetWeaponAction, ETriggerEvent::Started, this, &ThisClass::toggleWeapon);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &ThisClass::aim);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &ThisClass::stopAim);
 	}
 	else
 	{
@@ -87,57 +81,49 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	}
 }
 
-void APlayerCharacter::Move(const FInputActionValue& Value)
+void APlayerCharacter::move(const FInputActionValue& Value)
 {
+	if (!Controller)
+		return;
+	
 	FVector2D MovementVector = Value.Get<FVector2D>();
+	const FRotator Rotation = Controller->GetControlRotation();
+	const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-	if (Controller)
-	{
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-		AddMovementInput(ForwardDirection, MovementVector.Y);
-		AddMovementInput(RightDirection, MovementVector.X);
-	}
+	AddMovementInput(ForwardDirection, MovementVector.Y);
+	AddMovementInput(RightDirection, MovementVector.X);
 }
 
-void APlayerCharacter::Look(const FInputActionValue& Value)
+void APlayerCharacter::look(const FInputActionValue& Value)
 {
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
-	if (Controller != nullptr)
-	{
-		AddControllerYawInput(LookAxisVector.X);
-		AddControllerPitchInput(LookAxisVector.Y);
-	}
+	if (Controller == nullptr)
+		return;
+	
+	AddControllerYawInput(LookAxisVector.X);
+	AddControllerPitchInput(LookAxisVector.Y);
 }
 
-void APlayerCharacter::ToggleWeapon(const FInputActionValue& Value)
+void APlayerCharacter::toggleWeapon(const FInputActionValue& Value)
 {
 	RifleEquipped = !RifleEquipped;
 	WeaponSMComponent->SetHiddenInGame(!RifleEquipped);
 }
 
-void APlayerCharacter::Aim(const FInputActionValue& Value)
+void APlayerCharacter::aim(const FInputActionValue& Value)
 {
 }
 
-void APlayerCharacter::StopAim(const FInputActionValue& Value)
+void APlayerCharacter::stopAim(const FInputActionValue& Value)
 {
 }
 
-void APlayerCharacter::Interact()
+void APlayerCharacter::interact()
 {
-	if (_isInVehicle)
-	{
-		ExitVehicle();
-		return;
-	}
-	
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
@@ -152,52 +138,40 @@ void APlayerCharacter::Interact()
 	);
 
 	if (!bHit)
-	{
 		return;
-	}
 
 	for (const FOverlapResult& Overlap : OverlapResults)
 	{
 		if (AACar* Car = Cast<AACar>(Overlap.GetActor()))
 		{
-			EnterVehicle(Car);
+			enterVehicle(Car);
 			return;
 		}
 	}
 }
 
-void APlayerCharacter::EnterVehicle(AACar* Vehicle)
+void APlayerCharacter::enterVehicle(AACar* Vehicle)
 {
 	if (!Vehicle)
-	{
 		return;
-	}
 	
 	_currentVehicle = Vehicle;
-	_isInVehicle = true;
-
-	AController* PlayerController = GetController();
-	Vehicle->PossessVehicle(PlayerController);
-		
+	GetMovementComponent()->StopMovementImmediately();
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
+	Vehicle->possessVehicle(this);
 }
 
-void APlayerCharacter::ExitVehicle()
+void APlayerCharacter::exitVehicle()
 {
 	if (!_currentVehicle)
-	{
 		return;
-	}
-	
-	_currentVehicle->UnpossessVehicle();
 		
 	SetActorHiddenInGame(false);
 	SetActorEnableCollision(true);
-		
-	FVector ExitLocation = _currentVehicle->GetActorLocation() + FVector(200.f, 0.f, 0.f);
-	SetActorLocation(ExitLocation);
 
+	FVector exitLocation = _currentVehicle->GetActorLocation() + _currentVehicle->GetActorRotation().RotateVector(_exitOffset);
+	SetActorLocation(exitLocation);
+	SetActorRotation(_currentVehicle->GetActorRotation());
 	_currentVehicle = nullptr;
-	_isInVehicle = false;
 }

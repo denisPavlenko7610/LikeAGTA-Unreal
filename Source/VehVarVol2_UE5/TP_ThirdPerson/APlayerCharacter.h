@@ -58,25 +58,25 @@ public:
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	
 	APlayerCharacter();
-	void ExitVehicle();
+	void exitVehicle();
 
 protected:
-	virtual void BeginPlay() override;
-
-	void Move(const FInputActionValue& Value);
-	void Look(const FInputActionValue& Value);
-	void ToggleWeapon(const FInputActionValue& Value);
-	void Aim(const FInputActionValue& Value);
-	void StopAim(const FInputActionValue& Value);
-	void Interact();
+	void move(const FInputActionValue& Value);
+	void look(const FInputActionValue& Value);
+	void toggleWeapon(const FInputActionValue& Value);
+	void aim(const FInputActionValue& Value);
+	void stopAim(const FInputActionValue& Value);
+	void interact();
 	
-	void EnterVehicle(AACar* Vehicle);
+	void enterVehicle(AACar* Vehicle);
 
 
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 private:
-	bool _isInVehicle;
+	UPROPERTY()
 	AACar* _currentVehicle;
+
+	FVector _exitOffset = FVector(0.f, -200.f, 0.f);
 };
 

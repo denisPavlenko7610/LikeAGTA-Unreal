@@ -6,6 +6,7 @@
 #include "WheeledVehiclePawn.h"
 #include "ACar.generated.h"
 
+class APlayerCharacter;
 class UInputAction;
 class UInputMappingContext;
 class USphereComponent;
@@ -13,12 +14,14 @@ class USphereComponent;
 UCLASS(Abstract)
 class VEHVARVOL2_UE5_API AACar : public AWheeledVehiclePawn {
 	GENERATED_BODY()
-
+	
 public:
-	AACar();
 
-	void PossessVehicle(AController* NewController);
-	void UnpossessVehicle();
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputMappingContext* DefaultMappingContext;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* EnterAction;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Collision")
 	USphereComponent* CollisionComponent;
@@ -26,4 +29,20 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision")
 	float CollisionRadius = 250.f;
 
+	AACar();
+	
+	void possessVehicle(APlayerCharacter* PlayerCharacter);
+	void unpossessVehicle();
+
+protected:
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+private:
+	bool canAllowExit();
+	void stopVehicle();
+
+	UPROPERTY()
+	APlayerCharacter* _playerCharacter;
+
+	float _speedExitLimit = 120.f;
 };
