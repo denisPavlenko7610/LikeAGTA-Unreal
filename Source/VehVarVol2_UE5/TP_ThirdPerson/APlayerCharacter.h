@@ -11,6 +11,7 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class USkeletalMeshComponent;
+class UAnimMontage;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -22,7 +23,7 @@ class APlayerCharacter : public ACharacter
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
-	USkeletalMeshComponent* WeaponSMComponent;
+	USkeletalMeshComponent* weaponSMComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;
@@ -46,13 +47,22 @@ public:
 	UInputAction* EnterAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* FireAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* AimAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* GetWeaponAction;
+	UInputAction* getWeaponAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Settings)
-	bool RifleEquipped;
+	bool rifleEquipped;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Settings)
+	bool isAiming;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	UAnimMontage* fireMontage;
 
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
@@ -66,17 +76,33 @@ protected:
 	void toggleWeapon(const FInputActionValue& Value);
 	void aim(const FInputActionValue& Value);
 	void stopAim(const FInputActionValue& Value);
+	void updateAimLerp();
 	void interact();
 	
 	void enterVehicle(AACar* Vehicle);
 
-
+	UFUNCTION()
+	void fire(const FInputActionValue& InputActionValue);
+	void stopFire(const FInputActionValue& InputActionValue);
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 private:
 	UPROPERTY()
 	AACar* _currentVehicle;
 
-	FVector _exitOffset = FVector(0.f, -200.f, 0.f);
+	FVector _exitOffset;
+
+	float _initialArmLength;
+	float _targetArmLength;
+	float _aimLerpDurationS;
+	float _elapsedTimeS;
+	FTimerHandle LerpTimerHandle;
+
+	bool _isFiring;
+
+	void playFireMontage(UAnimMontage* montage);
+	
+	UFUNCTION()
+	void onMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 };
 
