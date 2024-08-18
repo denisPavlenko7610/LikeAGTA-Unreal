@@ -59,7 +59,7 @@ public:
 	bool rifleEquipped;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Settings)
-	bool isAiming;
+	bool IsAiming;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UAnimMontage* fireMontage;
@@ -69,6 +69,7 @@ public:
 	
 	APlayerCharacter();
 	void exitVehicle();
+	void fire();
 
 protected:
 	void move(const FInputActionValue& Value);
@@ -82,7 +83,7 @@ protected:
 	void enterVehicle(AACar* Vehicle);
 
 	UFUNCTION()
-	void fire(const FInputActionValue& InputActionValue);
+	void fireAnimation(const FInputActionValue& InputActionValue);
 	void stopFire(const FInputActionValue& InputActionValue);
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
@@ -98,7 +99,7 @@ private:
 	float _elapsedTimeS;
 	FTimerHandle LerpTimerHandle;
 
-	bool _isFiring;
+	bool _canFire;
 
 	void playFireMontage(UAnimMontage* montage);
 	
