@@ -218,7 +218,7 @@ void APlayerCharacter::fireAnimation(const FInputActionValue& InputActionValue)
     if (!rifleEquipped)
         return;
 
-    _canFire = true;
+    _canFire = false;
 
     playFireMontage(fireMontage);
     if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
@@ -266,7 +266,7 @@ void APlayerCharacter::stopFire(const FInputActionValue& InputActionValue)
     if (!rifleEquipped)
         return;
 
-    _canFire = false;
+    _canFire = true;
 }
 
 void APlayerCharacter::playFireMontage(UAnimMontage* Montage)
@@ -283,7 +283,7 @@ void APlayerCharacter::playFireMontage(UAnimMontage* Montage)
 
 void APlayerCharacter::onMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-    if (!_canFire)
+    if (_canFire)
         return;
 
     fireAnimation({});
