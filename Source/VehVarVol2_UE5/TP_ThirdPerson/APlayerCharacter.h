@@ -23,7 +23,7 @@ class APlayerCharacter : public ACharacter
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
-	USkeletalMeshComponent* weaponSMComponent;
+	USkeletalMeshComponent* weaponComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;
@@ -64,12 +64,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UAnimMontage* fireMontage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
+	UParticleSystem* fireParticle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
+	UParticleSystem* impactParticle;
+
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	
 	APlayerCharacter();
 	void exitVehicle();
 	void fire();
+	void getSocketTransformAndVectors(const FName& socketName, FVector& outStart, FVector& outForwardVector) const;
 
 protected:
 	void move(const FInputActionValue& Value);
@@ -84,6 +91,8 @@ protected:
 
 	UFUNCTION()
 	void fireAnimation(const FInputActionValue& InputActionValue);
+	
+	void handleHit(const FHitResult& hitResult);
 	void stopFire(const FInputActionValue& InputActionValue);
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
@@ -105,5 +114,8 @@ private:
 	
 	UFUNCTION()
 	void onMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	void spawnFireEffect(FName socketName, FVector& location, FVector& direction);
+	bool performLineTrace(const FVector& start, const FVector& end, FHitResult& outHit) const;
 };
 

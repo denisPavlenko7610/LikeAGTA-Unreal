@@ -10,7 +10,7 @@ public class VehVarVol2_UE5 : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "ChaosVehicles" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "ChaosVehicles", "GameplayCameras" });
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

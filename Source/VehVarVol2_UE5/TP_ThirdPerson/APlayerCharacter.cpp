@@ -16,7 +16,9 @@
 #include "TimerManager.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
-#include "DrawDebugHelpers.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "../Effects/UCameraShake.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -33,6 +35,10 @@ APlayerCharacter::APlayerCharacter()
     MovementComponent->MinAnalogWalkSpeed = 20.f;
     MovementComponent->BrakingDecelerationWalking = 2000.f;
     MovementComponent->BrakingDecelerationFalling = 1500.0f;
+
+    bUseControllerRotationPitch = false;
+    bUseControllerRotationYaw = false;
+    bUseControllerRotationRoll = false;
     
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(RootComponent);
@@ -43,9 +49,9 @@ APlayerCharacter::APlayerCharacter()
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
     
-    weaponSMComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponSMComponent"));
-    weaponSMComponent->SetupAttachment(GetMesh(), FName("WeaponSocket"));
-    weaponSMComponent->SetHiddenInGame(true);
+    weaponComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponSMComponent"));
+    weaponComponent->SetupAttachment(GetMesh(), FName("WeaponSocket"));
+    weaponComponent->SetHiddenInGame(true);
     
     _exitOffset = FVector(0.f, -200.f, 0.f);
     _initialArmLength = 300.0f;
@@ -117,7 +123,7 @@ void APlayerCharacter::look(const FInputActionValue& Value)
 void APlayerCharacter::toggleWeapon(const FInputActionValue& Value)
 {
     rifleEquipped = !rifleEquipped;
-    weaponSMComponent->SetHiddenInGame(!rifleEquipped);
+    weaponComponent->SetHiddenInGame(!rifleEquipped);
 }
 
 void APlayerCharacter::aim(const FInputActionValue& Value)
@@ -229,35 +235,98 @@ void APlayerCharacter::fireAnimation(const FInputActionValue& InputActionValue)
 
 void APlayerCharacter::fire()
 {
-    float Length = 1000.f;
-    FTransform SocketTransform = weaponSMComponent->GetSocketTransform("b_gun_muzzleflash");
-    FVector Start = SocketTransform.GetLocation();
-    FVector ForwardVector = SocketTransform.GetRotation().GetUpVector();
-    FVector End = ForwardVector * Length + Start;
+    const float length = 1000.f;
+    const FName socketName = "Muzzle";
 
-    FHitResult OutHit;
-    FCollisionQueryParams CollisionParams;
+    FVector start, forwardVector;
+    getSocketTransformAndVectors(socketName, start, forwardVector);
 
-    bool bHit = GetWorld()->LineTraceSingleByChannel(
-        OutHit,
-        Start,
-        End,
-        ECC_Visibility,
-        CollisionParams
-    );
+    FVector end = forwardVector * length + start;
+
+    spawnFireEffect(socketName, start, forwardVector);
+
+    FHitResult hitResult;
+    bool bHit = performLineTrace(start, end, hitResult);
 
     if (bHit)
     {
-        DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 1, 0, 1);
+        handleHit(hitResult);
+    }
 
-        if (OutHit.GetActor())
+    APlayerController* playerController = GetWorld()->GetFirstPlayerController();
+    if (playerController)
+    {
+        playerController->PlayerCameraManager->StartCameraShake(UCameraShake::StaticClass(), 1.0f);
+    }
+}
+
+void APlayerCharacter::getSocketTransformAndVectors(const FName& socketName, FVector& outStart, FVector& outForwardVector) const
+{
+    FTransform socketTransform = weaponComponent->GetSocketTransform(socketName);
+    outStart = socketTransform.GetLocation();
+    outForwardVector = socketTransform.Rotator().Vector();
+}
+
+void APlayerCharacter::spawnFireEffect(FName socketName, FVector& location, FVector& direction)
+{
+    if (fireParticle)
+    {
+        float vectorLength = 10.f;
+        FVector adjustedLocation = location + direction * vectorLength;
+        UParticleSystemComponent* fireEffect = UGameplayStatics::SpawnEmitterAttached(
+            fireParticle,
+            weaponComponent,
+            socketName,
+            adjustedLocation,
+            direction.Rotation(),
+            EAttachLocation::KeepWorldPosition,
+            true,
+            EPSCPoolMethod::AutoRelease
+        );
+
+        if (fireEffect)
         {
-            UE_LOG(LogTemp, Warning, TEXT("Hit Actor: %s"), *OutHit.GetActor()->GetName());
+            float scale = 0.15f;
+            fireEffect->SetWorldScale3D(FVector(scale));
         }
     }
-    else
+}
+
+bool APlayerCharacter::performLineTrace(const FVector& start, const FVector& end, FHitResult& outHit) const
+{
+    FCollisionQueryParams collisionParams;
+    return GetWorld()->LineTraceSingleByChannel(
+        outHit,
+        start,
+        end,
+        ECC_Visibility,
+        collisionParams
+    );
+}
+
+void APlayerCharacter::handleHit(const FHitResult& hitResult)
+{
+    // if (hitResult.GetActor())
+    // {
+    //     UE_LOG(LogTemp, Warning, TEXT("Hit Actor: %s"), *hitResult.GetActor()->GetName());
+    // }
+
+    if (impactParticle)
     {
-        DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1, 0, 1);
+        UParticleSystemComponent* pointEffect = UGameplayStatics::SpawnEmitterAtLocation(
+            GetWorld(),
+            impactParticle,
+            hitResult.ImpactPoint,
+            hitResult.Normal.ToOrientationRotator(),
+            true,
+            EPSCPoolMethod::AutoRelease
+        );
+
+        if (pointEffect)
+        {
+            float scale = 0.5f;
+            pointEffect->SetWorldScale3D(FVector(scale));
+        }
     }
 }
 
