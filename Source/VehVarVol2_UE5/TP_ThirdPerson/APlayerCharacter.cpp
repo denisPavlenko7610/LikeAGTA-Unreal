@@ -18,7 +18,8 @@
 #include "Animation/AnimMontage.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
-#include "../Effects/UCameraShake.h"
+#include "VehVarVol2_UE5/Effects/Audio/AudioPlayer.h"
+#include "VehVarVol2_UE5/Effects/Camera/UCameraShake.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -244,7 +245,8 @@ void APlayerCharacter::fire()
     FVector end = forwardVector * length + start;
 
     spawnFireEffect(socketName, start, forwardVector);
-
+    UAudioPlayer::PlayMetaSoundAtLocation(GetWorld(), GetActorLocation(), AudioList::fireSound);
+    
     FHitResult hitResult;
     bool bHit = performLineTrace(start, end, hitResult);
 
