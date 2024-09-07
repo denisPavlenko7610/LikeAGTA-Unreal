@@ -12,6 +12,7 @@ class UInputMappingContext;
 class UInputAction;
 class USkeletalMeshComponent;
 class UAnimMontage;
+class UUserWidget;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -70,19 +71,28 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
 	UParticleSystem* impactParticle;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<UUserWidget> hudWidget;
+
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	
 	APlayerCharacter();
+	virtual void BeginPlay() override;
+
 	void exitVehicle();
 	void fire();
+	void handleFireSound() const;
+	void applyCameraShake();
 	void getSocketTransformAndVectors(const FName& socketName, FVector& outStart, FVector& outForwardVector) const;
 
 protected:
 	void move(const FInputActionValue& Value);
 	void look(const FInputActionValue& Value);
 	void toggleWeapon(const FInputActionValue& Value);
+	void setSafeRotation();
 	void aim(const FInputActionValue& Value);
+	void setFreeRotation();
 	void stopAim(const FInputActionValue& Value);
 	void updateAimLerp();
 	void interact();
@@ -91,10 +101,14 @@ protected:
 
 	UFUNCTION()
 	void fireAnimation(const FInputActionValue& InputActionValue);
-	
+
 	void handleHit(const FHitResult& hitResult);
 	void stopFire(const FInputActionValue& InputActionValue);
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	void createHUD();
+
+	UFUNCTION(BlueprintCallable)
+	FRotator getAimRotation();
 
 private:
 	UPROPERTY()
@@ -106,6 +120,7 @@ private:
 	float _targetArmLength;
 	float _aimLerpDurationS;
 	float _elapsedTimeS;
+	FVector2d _rightOffset;
 	FTimerHandle LerpTimerHandle;
 
 	bool _canFire;

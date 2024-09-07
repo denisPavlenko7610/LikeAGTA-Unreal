@@ -11,5 +11,5 @@ class VEHVARVOL2_UE5_API UAudioPlayer : public UObject {
 	GENERATED_BODY()
 
 public:
-	static void PlayMetaSoundAtLocation(UWorld* world, FVector soundLocation, FName& audioName);
+	static void playMetaSoundAtLocation(UWorld* world, FVector soundLocation, FName& audioName);
 };

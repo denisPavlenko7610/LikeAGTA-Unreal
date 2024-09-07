@@ -4,7 +4,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "MetasoundSource.h"
 
-void UAudioPlayer::PlayMetaSoundAtLocation(UWorld* world, FVector soundLocation, FName& audioName)
+void UAudioPlayer::playMetaSoundAtLocation(UWorld* world, FVector soundLocation, FName& audioName)
 {
 	if (!world || audioName.IsNone())
 	{

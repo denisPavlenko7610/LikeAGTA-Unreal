@@ -20,6 +20,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "VehVarVol2_UE5/Effects/Audio/AudioPlayer.h"
 #include "VehVarVol2_UE5/Effects/Camera/UCameraShake.h"
+#include "Blueprint/UserWidget.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -62,6 +63,12 @@ APlayerCharacter::APlayerCharacter()
     _currentVehicle = nullptr;
 }
 
+void APlayerCharacter::BeginPlay()
+{
+    Super::BeginPlay();
+    createHUD();
+}
+
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
@@ -92,6 +99,18 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
             TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."),
             *GetNameSafe(this));
     }
+}
+
+void APlayerCharacter::createHUD()
+{
+    if (hudWidget == nullptr)
+        return;
+    
+    UUserWidget* hud = CreateWidget<UUserWidget>(GetWorld(), hudWidget);
+    if (hud == nullptr)
+        return;
+
+    hud->AddToViewport();
 }
 
 void APlayerCharacter::move(const FInputActionValue& Value)
@@ -133,10 +152,13 @@ void APlayerCharacter::aim(const FInputActionValue& Value)
         return;
 
     _initialArmLength = CameraBoom->TargetArmLength;
+    _rightOffset = FVector2d(15,50);
     _targetArmLength = 150.0f;
     _elapsedTimeS = 0.0f;
     IsAiming = true;
 
+    //setSafeRotation();
+    
     GetWorld()->GetTimerManager().SetTimer(LerpTimerHandle, this, &APlayerCharacter::updateAimLerp, GetWorld()->GetDeltaSeconds(), true);
 }
 
@@ -146,21 +168,43 @@ void APlayerCharacter::stopAim(const FInputActionValue& Value)
         return;
 
     _initialArmLength = CameraBoom->TargetArmLength;
+    _rightOffset = FVector2d(0,0);
     _targetArmLength = 300.0f;
     _elapsedTimeS = 0.0f;
     IsAiming = false;
 
+    //setFreeRotation();
+    
     GetWorld()->GetTimerManager().SetTimer(LerpTimerHandle, this, &APlayerCharacter::updateAimLerp, GetWorld()->GetDeltaSeconds(), true);
+}
+
+void APlayerCharacter::setSafeRotation()
+{
+    UCharacterMovementComponent* characterMovement = GetCharacterMovement();
+    characterMovement->bOrientRotationToMovement = false;
+    characterMovement->bUseControllerDesiredRotation = true;
+}
+
+void APlayerCharacter::setFreeRotation()
+{
+    UCharacterMovementComponent* characterMovement = GetCharacterMovement();
+    characterMovement->bOrientRotationToMovement = true;
+    characterMovement->bUseControllerDesiredRotation = false;
 }
 
 void APlayerCharacter::updateAimLerp()
 {
     _elapsedTimeS += GetWorld()->GetDeltaSeconds();
-    float Alpha = FMath::Clamp(_elapsedTimeS / _aimLerpDurationS, 0.0f, 1.0f);
-    float NewArmLength = FMath::Lerp(_initialArmLength, _targetArmLength, Alpha);
-    CameraBoom->TargetArmLength = NewArmLength;
-
-    if (Alpha >= 1.f)
+    float alpha = FMath::Clamp(_elapsedTimeS / _aimLerpDurationS, 0.0f, 1.0f);
+    float newArmLength = FMath::Lerp(_initialArmLength, _targetArmLength, alpha);
+    float newRightOffset= FMath::Lerp(_rightOffset.X, _rightOffset.Y, alpha);
+    
+    CameraBoom->TargetArmLength = newArmLength;
+    FVector cameraBoomLocation = CameraBoom->GetRelativeLocation();
+    cameraBoomLocation.Y = newRightOffset;
+    CameraBoom->SetRelativeLocation(cameraBoomLocation);
+    
+    if (alpha >= 1.f)
     {
         GetWorld()->GetTimerManager().ClearTimer(LerpTimerHandle);
     }
@@ -236,27 +280,38 @@ void APlayerCharacter::fireAnimation(const FInputActionValue& InputActionValue)
 
 void APlayerCharacter::fire()
 {
-    const float length = 1000.f;
+    constexpr float length = 1000.f;
     const FName socketName = "Muzzle";
+    
+    FVector cameraWorldLocation = FollowCamera->GetComponentLocation();
+    FVector forwardVector = FollowCamera->GetForwardVector();
 
-    FVector start, forwardVector;
-    getSocketTransformAndVectors(socketName, start, forwardVector);
+    FVector startMuzzlePosition;
+    FVector socketForwardVector;
+    getSocketTransformAndVectors(socketName, startMuzzlePosition, socketForwardVector);
+    
+    FVector endPosition = forwardVector * length + cameraWorldLocation;
 
-    FVector end = forwardVector * length + start;
-
-    spawnFireEffect(socketName, start, forwardVector);
-    UAudioPlayer::PlayMetaSoundAtLocation(GetWorld(), GetActorLocation(), AudioList::fireSound);
+    spawnFireEffect(socketName, startMuzzlePosition, forwardVector);
+    handleFireSound();
     
     FHitResult hitResult;
-    bool bHit = performLineTrace(start, end, hitResult);
-
-    if (bHit)
+    if (performLineTrace( cameraWorldLocation, endPosition, hitResult))
     {
         handleHit(hitResult);
     }
+    
+    applyCameraShake();
+}
 
-    APlayerController* playerController = GetWorld()->GetFirstPlayerController();
-    if (playerController)
+void APlayerCharacter::handleFireSound() const
+{
+    UAudioPlayer::playMetaSoundAtLocation(GetWorld(), GetActorLocation(), AudioList::fireSound);
+}
+
+void APlayerCharacter::applyCameraShake()
+{
+    if (APlayerController* playerController = GetWorld()->GetFirstPlayerController())
     {
         playerController->PlayerCameraManager->StartCameraShake(UCameraShake::StaticClass(), 1.0f);
     }
@@ -271,27 +326,36 @@ void APlayerCharacter::getSocketTransformAndVectors(const FName& socketName, FVe
 
 void APlayerCharacter::spawnFireEffect(FName socketName, FVector& location, FVector& direction)
 {
-    if (fireParticle)
-    {
-        float vectorLength = 10.f;
-        FVector adjustedLocation = location + direction * vectorLength;
-        UParticleSystemComponent* fireEffect = UGameplayStatics::SpawnEmitterAttached(
-            fireParticle,
-            weaponComponent,
-            socketName,
-            adjustedLocation,
-            direction.Rotation(),
-            EAttachLocation::KeepWorldPosition,
-            true,
-            EPSCPoolMethod::AutoRelease
-        );
+    if (!fireParticle)
+        return;
+    
+    float vectorLength = 10.f;
+    FVector adjustedLocation = location + direction * vectorLength;
+    UParticleSystemComponent* fireEffect = UGameplayStatics::SpawnEmitterAttached(
+        fireParticle,
+        weaponComponent,
+        socketName,
+        adjustedLocation,
+        direction.Rotation(),
+        EAttachLocation::KeepWorldPosition,
+        true,
+        EPSCPoolMethod::AutoRelease
+    );
 
-        if (fireEffect)
-        {
-            float scale = 0.15f;
-            fireEffect->SetWorldScale3D(FVector(scale));
-        }
-    }
+    if (!fireEffect)
+        return;
+    
+    float scale = 0.15f;
+    fireEffect->SetWorldScale3D(FVector(scale));
+}
+
+FRotator APlayerCharacter::getAimRotation()
+{
+    FRotator controlRotation = GetControlRotation();
+    FRotator deltaRotation = controlRotation - GetActorRotation();
+    deltaRotation.Pitch *= -1;
+    
+    return FRotator(0, deltaRotation.Yaw,deltaRotation.Pitch);
 }
 
 bool APlayerCharacter::performLineTrace(const FVector& start, const FVector& end, FHitResult& outHit) const
