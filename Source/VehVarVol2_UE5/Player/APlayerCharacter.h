@@ -5,7 +5,9 @@
 #include "Logging/LogMacros.h"
 #include "APlayerCharacter.generated.h"
 
-class AACar;
+class UVehicleInteraction;
+class UWeaponComponent;
+class ACar;
 class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
@@ -24,7 +26,7 @@ class APlayerCharacter : public ACharacter
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
-	USkeletalMeshComponent* weaponComponent;
+	UWeaponComponent* _weaponComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;
@@ -57,19 +59,7 @@ public:
 	UInputAction* getWeaponAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Settings)
-	bool rifleEquipped;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Settings)
 	bool IsAiming;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
-	UAnimMontage* fireMontage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
-	UParticleSystem* fireParticle;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
-	UParticleSystem* impactParticle;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
 	TSubclassOf<UUserWidget> hudWidget;
@@ -80,30 +70,19 @@ public:
 	APlayerCharacter();
 	virtual void BeginPlay() override;
 
-	void exitVehicle();
-	void fire();
-	void handleFireSound() const;
-	void applyCameraShake();
 	void getSocketTransformAndVectors(const FName& socketName, FVector& outStart, FVector& outForwardVector) const;
 
+	UVehicleInteraction* getVehicleInteraction() { return _vehicleInteraction; }
+	UWeaponComponent* getWeaponComponent() { return _weaponComponent; }
+	
 protected:
 	void move(const FInputActionValue& Value);
 	void look(const FInputActionValue& Value);
-	void toggleWeapon(const FInputActionValue& Value);
-	void setSafeRotation();
 	void aim(const FInputActionValue& Value);
-	void setFreeRotation();
 	void stopAim(const FInputActionValue& Value);
 	void updateAimLerp();
 	void interact();
 	
-	void enterVehicle(AACar* Vehicle);
-
-	UFUNCTION()
-	void fireAnimation(const FInputActionValue& InputActionValue);
-
-	void handleHit(const FHitResult& hitResult);
-	void stopFire(const FInputActionValue& InputActionValue);
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	void createHUD();
 
@@ -111,11 +90,6 @@ protected:
 	FRotator getAimRotation();
 
 private:
-	UPROPERTY()
-	AACar* _currentVehicle;
-
-	FVector _exitOffset;
-
 	float _initialArmLength;
 	float _targetArmLength;
 	float _aimLerpDurationS;
@@ -123,14 +97,11 @@ private:
 	FVector2d _rightOffset;
 	FTimerHandle LerpTimerHandle;
 
-	bool _canFire;
+	float pitchLimit = 100.0f;
+	float yawLimit = 80.0f;
+	float zLimit = 90.0f;
 
-	void playFireMontage(UAnimMontage* montage);
-	
-	UFUNCTION()
-	void onMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-
-	void spawnFireEffect(FName socketName, FVector& location, FVector& direction);
-	bool performLineTrace(const FVector& start, const FVector& end, FHitResult& outHit) const;
+	UPROPERTY()
+	UVehicleInteraction* _vehicleInteraction;
 };
 

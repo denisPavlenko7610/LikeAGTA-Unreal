@@ -12,7 +12,7 @@ class UInputMappingContext;
 class USphereComponent;
 
 UCLASS(Abstract)
-class VEHVARVOL2_UE5_API AACar : public AWheeledVehiclePawn {
+class VEHVARVOL2_UE5_API ACar : public AWheeledVehiclePawn {
 	GENERATED_BODY()
 	
 public:
@@ -29,7 +29,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision")
 	float CollisionRadius = 250.f;
 
-	AACar();
+	ACar();
 	
 	void possessVehicle(APlayerCharacter* PlayerCharacter);
 	void unpossessVehicle();

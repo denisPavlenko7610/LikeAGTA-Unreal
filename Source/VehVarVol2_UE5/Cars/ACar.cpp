@@ -7,9 +7,10 @@
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "GameFramework/PawnMovementComponent.h"
-#include "VehVarVol2_UE5/TP_ThirdPerson/APlayerCharacter.h"
+#include "VehVarVol2_UE5/Player/APlayerCharacter.h"
+#include "VehVarVol2_UE5/Player/Interactions/VehicleInteraction.h"
 
-AACar::AACar()
+ACar::ACar()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
@@ -17,7 +18,7 @@ AACar::AACar()
 	SetRootComponent(GetMesh());
 }
 
-void AACar::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void ACar::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
@@ -26,7 +27,7 @@ void AACar::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	}
 }
 
-void AACar::possessVehicle(APlayerCharacter* PlayerCharacter)
+void ACar::possessVehicle(APlayerCharacter* PlayerCharacter)
 {
 	_playerCharacter = PlayerCharacter;
 	if (AController* controller = PlayerCharacter->GetController())
@@ -35,7 +36,7 @@ void AACar::possessVehicle(APlayerCharacter* PlayerCharacter)
 	}
 }
 
-void AACar::unpossessVehicle()
+void ACar::unpossessVehicle()
 {
 	if (!canAllowExit())
 		return;
@@ -43,19 +44,19 @@ void AACar::unpossessVehicle()
 	if (!_playerCharacter)
 		return;
 
-	_playerCharacter->exitVehicle();
+	_playerCharacter->getVehicleInteraction()->exitVehicle();
 	stopVehicle();
 	GetController()->Possess(_playerCharacter);
 	_playerCharacter = nullptr;
 }
 
-bool AACar::canAllowExit()
+bool ACar::canAllowExit()
 {
 	double speed = GetVelocity().Size();
 	return speed < _speedExitLimit;
 }
 
-void AACar::stopVehicle()
+void ACar::stopVehicle()
 {
 	GetMovementComponent()->StopMovementImmediately();
 }

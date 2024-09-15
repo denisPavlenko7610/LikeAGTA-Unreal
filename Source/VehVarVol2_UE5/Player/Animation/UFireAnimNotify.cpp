@@ -1,7 +1,8 @@
 #include "UFireAnimNotify.h"
 
 #include "Components/SkeletalMeshComponent.h"
-#include "VehVarVol2_UE5/TP_ThirdPerson/APlayerCharacter.h"
+#include "VehVarVol2_UE5/Player/APlayerCharacter.h"
+#include "VehVarVol2_UE5/Player/Components/WeaponComponent.h"
 
 void UFireAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& NotifyEventReference)
 {
@@ -17,6 +18,6 @@ void UFireAnimNotify::fire(USkeletalMeshComponent* skeletalMesh)
 	
 	if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(skeletalMesh->GetOwner()))
 	{
-		PlayerCharacter->fire();
+		PlayerCharacter->getWeaponComponent()->fire();
 	}
 }
