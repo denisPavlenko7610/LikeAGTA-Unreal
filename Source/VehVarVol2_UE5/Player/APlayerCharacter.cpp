@@ -17,8 +17,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/HealthComponent.h"
 #include "Components/WeaponComponent.h"
 #include "Interactions/VehicleInteraction.h"
+#include "VehVarVol2_UE5/UI/UHudWidget.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -49,9 +51,9 @@ APlayerCharacter::APlayerCharacter()
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
 
-    _weaponComponent = CreateDefaultSubobject<UWeaponComponent>(TEXT("WeaponComponent"));
-    _weaponComponent->SetupAttachment(GetMesh(), FName("WeaponSocket"));
-    _weaponComponent->SetHiddenInGame(true);
+    WeaponComponent = CreateDefaultSubobject<UWeaponComponent>(TEXT("WeaponComponent"));
+    WeaponComponent->SetupAttachment(GetMesh(), FName("WeaponSocket"));
+    WeaponComponent->SetHiddenInGame(true);
 
     _initialArmLength = 300.0f;
     _targetArmLength = 150.0f;
@@ -67,7 +69,7 @@ void APlayerCharacter::BeginPlay()
     _vehicleInteraction = NewObject<UVehicleInteraction>(this);
     _vehicleInteraction->init(this);
 
-    _weaponComponent->init(this);
+    WeaponComponent->init(this);
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -88,9 +90,9 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
         EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::move);
         EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::look);
         EnhancedInputComponent->BindAction(EnterAction, ETriggerEvent::Started, this, &ThisClass::interact);
-        EnhancedInputComponent->BindAction(getWeaponAction, ETriggerEvent::Started, _weaponComponent, &UWeaponComponent::toggleWeapon);
-        EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, _weaponComponent, &UWeaponComponent::fireAnimation);
-        EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, _weaponComponent, &UWeaponComponent::stopFire);
+        EnhancedInputComponent->BindAction(getWeaponAction, ETriggerEvent::Started, WeaponComponent, &UWeaponComponent::toggleWeapon);
+        EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, WeaponComponent, &UWeaponComponent::fireAnimation);
+        EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, WeaponComponent, &UWeaponComponent::stopFire);
         EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &ThisClass::aim);
         EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &ThisClass::stopAim);
     }
@@ -108,11 +110,9 @@ void APlayerCharacter::createHUD()
     if (hudWidget == nullptr)
         return;
     
-    UUserWidget* hud = CreateWidget<UUserWidget>(GetWorld(), hudWidget);
-    if (hud == nullptr)
-        return;
-
-    hud->AddToViewport();
+    _hud = CreateWidget<UHudWidget>(GetWorld(), hudWidget);
+    _hud->AddToViewport();
+    _hud->hideCrosshair();
 }
 
 void APlayerCharacter::move(const FInputActionValue& Value)
@@ -144,9 +144,10 @@ void APlayerCharacter::look(const FInputActionValue& Value)
 
 void APlayerCharacter::aim(const FInputActionValue& Value)
 {
-    if (!_weaponComponent->rifleEquipped)
+    if (!WeaponComponent->rifleEquipped)
         return;
 
+    _hud->showCrosshair();
     _initialArmLength = CameraBoom->TargetArmLength;
     _rightOffset = FVector2d(15,50);
     _targetArmLength = 150.0f;
@@ -158,9 +159,10 @@ void APlayerCharacter::aim(const FInputActionValue& Value)
 
 void APlayerCharacter::stopAim(const FInputActionValue& Value)
 {
-    if (!_weaponComponent->rifleEquipped)
+    if (!WeaponComponent->rifleEquipped)
         return;
 
+    _hud->hideCrosshair();
     _initialArmLength = CameraBoom->TargetArmLength;
     _rightOffset = FVector2d(0,0);
     _targetArmLength = 300.0f;
@@ -218,7 +220,7 @@ void APlayerCharacter::interact()
 
 void APlayerCharacter::getSocketTransformAndVectors(const FName& socketName, FVector& outStart, FVector& outForwardVector) const
 {
-    FTransform socketTransform = _weaponComponent->GetSocketTransform(socketName);
+    FTransform socketTransform = WeaponComponent->GetSocketTransform(socketName);
     outStart = socketTransform.GetLocation();
     outForwardVector = socketTransform.Rotator().Vector();
 }
@@ -230,6 +232,14 @@ FRotator APlayerCharacter::getAimRotation()
     deltaRotation.Pitch *= -1;
     
     return FRotator(0, deltaRotation.Yaw,deltaRotation.Pitch);
+}
+
+void APlayerCharacter::onHealthChanged(UHealthComponent* OwningHealthComp, float Health, float HealthDelta, const UDamageType* DamageType,
+    AController* InstigatedBy, AActor* DamageCauser)
+{
+    Super::onHealthChanged(OwningHealthComp, Health, HealthDelta, DamageType, InstigatedBy, DamageCauser);
+    
+    _hud->updateHealthBar(Health, OwningHealthComp->getMaxHealth());
 }
 
 

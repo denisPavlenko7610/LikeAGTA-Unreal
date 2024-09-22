@@ -3,9 +3,12 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "VehVarVol2_UE5/Characters/Citizen.h"
 #include "APlayerCharacter.generated.h"
 
+class UHudWidget;
 class UVehicleInteraction;
+class UHealthComponent;
 class UWeaponComponent;
 class ACar;
 class USpringArmComponent;
@@ -20,13 +23,13 @@ struct FInputActionValue;
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
 UCLASS(config=Game)
-class APlayerCharacter : public ACharacter
+class APlayerCharacter : public ACitizen
 {
 	GENERATED_BODY()
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
-	UWeaponComponent* _weaponComponent;
+	UWeaponComponent* WeaponComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;
@@ -62,10 +65,10 @@ public:
 	bool IsAiming;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
-	TSubclassOf<UUserWidget> hudWidget;
+	TSubclassOf<UHudWidget> hudWidget;
 
-	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	FORCEINLINE USpringArmComponent* getCameraBoom() const { return CameraBoom; }
+	FORCEINLINE UCameraComponent* getFollowCamera() const { return FollowCamera; }
 	
 	APlayerCharacter();
 	virtual void BeginPlay() override;
@@ -73,7 +76,7 @@ public:
 	void getSocketTransformAndVectors(const FName& socketName, FVector& outStart, FVector& outForwardVector) const;
 
 	UVehicleInteraction* getVehicleInteraction() { return _vehicleInteraction; }
-	UWeaponComponent* getWeaponComponent() { return _weaponComponent; }
+	UWeaponComponent* getWeaponComponent() { return WeaponComponent; }
 	
 protected:
 	void move(const FInputActionValue& Value);
@@ -84,10 +87,14 @@ protected:
 	void interact();
 	
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	
 	void createHUD();
 
 	UFUNCTION(BlueprintCallable)
 	FRotator getAimRotation();
+
+	virtual void onHealthChanged(UHealthComponent* OwningHealthComp, float Health, float HealthDelta, const UDamageType* DamageType, AController* InstigatedBy,
+	                             AActor* DamageCauser) override;
 
 private:
 	float _initialArmLength;
@@ -103,5 +110,8 @@ private:
 
 	UPROPERTY()
 	UVehicleInteraction* _vehicleInteraction;
+
+	UPROPERTY()
+	UHudWidget* _hud; 
 };
 

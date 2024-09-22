@@ -6,47 +6,62 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/DamageEvents.h"
 #include "Engine/Engine.h"
+#include "GameFramework/DamageType.h"
+#include "GameFramework/PawnMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "VehVarVol2_UE5/Player/Components/HealthComponent.h"
 
 
-ACitizen::ACitizen(): _isDead(false)
+ACitizen::ACitizen()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
 }
 
 void ACitizen::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (HealthComponent)
+	{
+		HealthComponent->OnHealthChanged.AddDynamic(this, &ACitizen::onHealthChanged);
+	}
 }
 
 float ACitizen::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (_isDead)
-		return -1;
-	
-	float actualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-
-	if (actualDamage <= 0.0f)
-		actualDamage = DamageAmount;
-	
-	_currentHealth -= actualDamage;
-	_currentHealth = FMath::Clamp(_currentHealth, 0.0f, _maxHealth);
-	
-	FString HealthMessage = FString::Printf(TEXT("Current health is: %f"), _currentHealth);
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, HealthMessage);
-
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	spawnImpactParticles(DamageEvent);
 
-	if (_currentHealth <= 0)
-		die();
+	if (HealthComponent)
+	{
+		HealthComponent->takeDamage(this, ActualDamage, DamageEvent.DamageTypeClass
+			? DamageEvent.DamageTypeClass.GetDefaultObject() : nullptr, EventInstigator, DamageCauser);
+	}
+
+	return ActualDamage;
+}
+
+void ACitizen::onHealthChanged(UHealthComponent* OwningHealthComp, float Health, float HealthDelta, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	FString HealthMessage = FString::Printf(TEXT("Current health is: %f"), Health);
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, HealthMessage);
 	
-	return actualDamage;
+	if (Health <= 0)
+		die();
 }
 
 void ACitizen::die()
 {
-	_isDead = true;
+	UE_LOG(LogTemp, Warning, TEXT("%s has died!"), *GetName());
+	
+	GetMovementComponent()->StopMovementImmediately();
+	if (AController* controller = GetController())
+	{
+		controller->UnPossess();
+	}
+
 	GetMesh()->SetSimulatePhysics(true);
 }
 
