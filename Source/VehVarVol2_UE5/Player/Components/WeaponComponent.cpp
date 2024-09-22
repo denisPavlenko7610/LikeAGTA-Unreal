@@ -1,5 +1,6 @@
 #include "WeaponComponent.h"
 
+#include "HealthComponent.h"
 #include "InputActionValue.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
@@ -83,9 +84,13 @@ void UWeaponComponent::handleHit(const FHitResult& hitResult)
 
 	FPointDamageEvent PointDamageEvent;
 	PointDamageEvent.HitInfo = hitResult;
-
 	
-	if (Cast<ACitizen>(hitResult.GetActor()))
+	AActor* hitActor = hitResult.GetActor();
+
+	if (!hitActor)
+		return;
+
+	if (hitActor->FindComponentByClass<UHealthComponent>())
 	{
 		hitResult.GetActor()->TakeDamage(DamageAmount, PointDamageEvent, GetOwner()->GetInstigatorController(), _playerCharacter);
 	} else
